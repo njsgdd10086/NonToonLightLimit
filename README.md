@@ -120,22 +120,6 @@ Shader.SetGlobalFloat("_NonToonLightLimit_Envelope", 0.6f);
 **会不会破坏 NonToon 自带的模块？**
 不会。登记只做「往列表里追加一个 ID」，NonToon 自带的 11 个模块原样保留（可以在设置文件里核对）。
 
-## 开发
-
-```bash
-python scripts/validate_package.py --root .            # 校验包结构
-python scripts/validate_package.py --root . --tag v1.0.0  # 发布前校验标签
-```
-
-发布流程：改 `package.json` 的版本号 → 更新 `CHANGELOG.md` → 提交推送 → 打 tag 推送：
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-GitHub Actions 会自动校验、打包（zip 根目录就是包内容）、创建 Release，并把 VPM 索引推到 `gh-pages`。
-
 ## 许可
 
 MIT License，见 [LICENSE](LICENSE)。
