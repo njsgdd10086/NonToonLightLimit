@@ -1,0 +1,141 @@
+# NonToon 亮度控制（NonToon Light Limit）
+
+给 [NonToon](https://github.com/lilxyzw/NonToon) 加上 **亮度上下限** 和 **亮度倍数**，并支持用一个全局变量统一控制所有材质 —— 也就是 [Light Limit Changer](https://booth.pm/ja/items/4864776) 那种「环境再暗也不会黑、再亮也不会过曝」的效果。
+
+实现方式是给 Shader Core 写一个外挂模块，**不改 NonToon 本体**，NonToon 更新后重新导入即可，也不影响 NonToon 自带的 Light Boost、Shade、RimShade 等模块。
+
+> 配套插件：[LilToNonToon Switcher](https://github.com/njsgdd10086/LilToNonToonSwitcher)（把 lilToon 材质转成 NonToon 并生成一键切换开关）。
+
+---
+
+## 特性
+
+| 功能 | 说明 |
+| --- | --- |
+| 亮度下限 | 环境再暗也不会低于设定值，暗处不会糊成一团黑 |
+| 亮度上限 | 环境再亮也不会高于设定值，避免高光过曝 |
+| 亮度倍数 | 每个材质单独的整体明暗，1 = 不改变 |
+| 等比保持 | 按亮度（luma）归一后夹取，暗部/亮部之间的比例不变，不会把阴影拍平 |
+| 遮罩范围 | 用共享遮罩（Shared Mask）的某个通道控制生效范围，比如只提亮脸部 |
+| 全局控制 | 用一个全局变量同时驱动所有开了「Use Global Control」的材质 |
+| 与 Light Boost 叠加 | 模块排在 NonToon 自带 Lighten 之后执行，先提亮再限制，两者可以一起用 |
+
+## 安装
+
+### 方式一：VCC / ALCOM（推荐）
+
+1. 打开 VCC（或 ALCOM），进入 **Settings → Packages → Add Repository**；
+2. 填入本仓库的 VPM 索引地址：
+
+   ```
+   https://njsgdd10086.github.io/NonToonLightLimit/index.json
+   ```
+
+3. 在包列表里找到 **NonToon Light Limit**，点 Install。
+4. 依赖的 `jp.lilxyzw.shadercore` 与 `jp.lilxyzw.nontoon` 会自动装上（如果项目里还没有）。
+
+### 方式二：手动放进 Packages
+
+把本仓库整个文件夹复制到工程的 `Packages/com.atrinaxu.nontoon.lightlimit`（或直接把 Release 里的 zip 解压进去）。需要工程里已经有 Shader Core 和 NonToon。
+
+## 使用
+
+### 1. 确认模块已经登记
+
+安装后第一次打开工程，插件会自动把模块登记进 NonToon 的模块列表并重新导入 NonToon，Console 里会看到：
+
+```
+[NonToon 亮度控制] 已把模块登记到 ... ，NonToon 正在重新导入。
+```
+
+如果没看到或者属性没出现，手动执行菜单 **Tools → NonToon 亮度控制 → 重新登记到模块列表**。
+（也可以直接在 `NonToon.scshader` 的模块列表里勾选 `NonToon Light Limit (com.atrinaxu.nontoon.lightlimit)`。）
+
+### 2. 调材质
+
+材质面板上会多出 `NonToon Light Limit` 一组参数（属性名带 `_com_atrinaxu_nontoon_lightlimit_` 前缀）：
+
+| 参数 | 默认 | 作用 |
+| --- | --- | --- |
+| **Min Brightness** | 0 | 亮度下限。0.2 表示最暗的地方也按 0.2 的亮度渲染 |
+| **Max Brightness** | 1 | 亮度上限。NonToon 原本在 shader 里把上限压死在 1，调大可以放开 |
+| **Brightness** | 1 | 亮度倍数，1 = 不改变；想做整体调亮/调暗就改这里 |
+| **Use Global Control** | 关 | 打开后额外乘上全局倍数（见下一节） |
+| **Mask Channel** | A | 用共享遮罩的哪个通道限制生效范围；没设共享遮罩时全生效 |
+
+想批量改，可以直接框选多个 `.mat` 在 Inspector 里改，这些参数都是可动画的材质属性。
+
+### 3. 全局控制
+
+全局值是 **shader 全局变量**，用脚本设置一次，所有开了 **Use Global Control** 的材质都会跟着变：
+
+| 全局变量 | 默认 | 作用 |
+| --- | --- | --- |
+| `_NonToonLightLimit_Global` | 1 | 全局亮度倍数 |
+| `_NonToonLightLimit_Envelope` | 0 | 全局包络，> 0 时改用它：0 = 压到各材质的下限，1 = 放开到各材质的上限 |
+
+```csharp
+// 编辑器里预览：把所有开了全局控制的材质整体调亮 30%
+Shader.SetGlobalFloat("_NonToonLightLimit_Global", 1.3f);
+
+// 或者用一个 0..1 的滑块统一控制明暗
+Shader.SetGlobalFloat("_NonToonLightLimit_Envelope", 0.6f);
+```
+
+世界（Udon）里也可以用 `Shader.SetGlobalFloat` 驱动。
+
+> **关于 VRChat 头像的运行时控制**：Unity 的动画系统只能动画「渲染器上的材质属性」，**不能驱动 shader 全局变量**，所以头像里想让一个菜单滑条控制所有材质，只能靠给每个材质生成动画（Light Limit Changer 就是这么做的，它需要一套生成工具）。
+> 本插件只提供模块本身，不做动画生成。头像里可用的做法：
+> - 逐材质用动画控制 **Brightness** / **Min** / **Max**（这些是普通材质属性，动画/菜单都能驱动）；
+> - 或者用 MA / VRCFury 的材质属性动作批量控制；
+> - 全局变量则适合编辑器预览、脚本、以及世界。
+
+## 和 Light Limit Changer 的关系
+
+|  | Light Limit Changer | 本插件 |
+| --- | --- | --- |
+| 支持的 shader | lilToon / Poiyomi / … | 只做 NonToon |
+| 逐材质上下限 | ✅ | ✅ |
+| 全局一个滑块控制全部 | ✅（生成动画 + 菜单） | ⚠️ 只能通过 shader 全局变量（见上） |
+| 需要生成动画/菜单的工具 | 需要 | 不需要，纯模块 |
+| 对 NonToon 的影响 | 改材质参数 | 追加一个 Shader Core 模块 |
+
+## 原理
+
+* 模块以 `.scmodule` + `properties.hlsl` + `phase_modifylight.hlsl` 的形式挂在 Shader Core 的 `modifylight` 阶段，并声明 `afters: ["Lighten"]`，所以它在 NonToon 的 Light Boost 之后执行；
+* NonToon 的 `urp.hlsl` / `birp.hlsl` 里有 `sd.lightColor = min(env + lightSum, 1)`，上限被硬性压死，因此压暗、限制上限这类操作必须在 `sd.lightColor` 被使用之前改，`modifylight` 正好是那个位置；
+* Shader Core 只编译「白名单里的模块」（`SCShaderImporter` 里 `shaderModules.Contains(uniqueID)`），白名单存在 `ProjectSettings/jp.lilxyzw.shadercore.asset`，而 Shader Core 只会在导入 scshader 时把 **该 shader 目录下** 的模块写进去 —— 外挂包不在那个目录，所以插件里带了一个安装器：调用 Shader Core 自己的入口取出该 shader 的模块列表，追加本模块后落盘并重新导入。只追加不删除，幂等。
+
+## 常见问题
+
+**材质面板上没有出现参数？**
+说明模块没被编译进 NonToon。执行菜单 **Tools → NonToon 亮度控制 → 重新登记到模块列表**，或检查 `NonToon.scshader` 的模块列表里有没有 `com.atrinaxu.nontoon.lightlimit`。
+
+**重启 Unity 后失效？**
+正常情况下不会 —— 登记结果写在 `ProjectSettings/jp.lilxyzw.shadercore.asset`。如果那个文件被删掉或回滚了，重新执行一次菜单即可。
+
+**想彻底关掉自动登记？**
+把 EditorPrefs 的 `AtriNaxu.NonToonLightLimit.Disabled` 设为 `true`，然后只用菜单手动登记。
+
+**会不会破坏 NonToon 自带的模块？**
+不会。登记只做「往列表里追加一个 ID」，NonToon 自带的 11 个模块原样保留（可以在设置文件里核对）。
+
+## 开发
+
+```bash
+python scripts/validate_package.py --root .            # 校验包结构
+python scripts/validate_package.py --root . --tag v1.0.0  # 发布前校验标签
+```
+
+发布流程：改 `package.json` 的版本号 → 更新 `CHANGELOG.md` → 提交推送 → 打 tag 推送：
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+GitHub Actions 会自动校验、打包（zip 根目录就是包内容）、创建 Release，并把 VPM 索引推到 `gh-pages`。
+
+## 许可
+
+MIT License，见 [LICENSE](LICENSE)。

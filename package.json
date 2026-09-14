@@ -1,0 +1,24 @@
+{
+    "name": "com.atrinaxu.nontoon.lightlimit",
+    "version": "1.0.0",
+    "displayName": "NonToon Light Limit",
+    "description": "为 NonToon 增加亮度上下限与全局亮度控制（Light Limit Changer 式的效果）。以 Shader Core 模块的形式注入，不改动 NonToon 本体。",
+    "unity": "2022.3",
+    "keywords": [
+        "NonToon",
+        "Shader Core",
+        "Light",
+        "Brightness",
+        "VRChat"
+    ],
+    "author": {
+        "name": "ATRI_NAIXU",
+        "url": "https://github.com/njsgdd10086"
+    },
+    "license": "MIT",
+    "hideInEditor": false,
+    "vpmDependencies": {
+        "jp.lilxyzw.shadercore": "^0.1.5",
+        "jp.lilxyzw.nontoon": "^0.1.3"
+    }
+}

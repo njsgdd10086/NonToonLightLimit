@@ -1,0 +1,11 @@
+{
+    "name": "NonToon Light Limit",
+    "uniqueID": "com.atrinaxu.nontoon.lightlimit",
+    "phases": [
+        {
+            "name": "LightLimit",
+            "phase": "modifylight",
+            "afters": [ "Lighten" ]
+        }
+    ]
+}
