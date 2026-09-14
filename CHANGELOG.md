@@ -1,5 +1,21 @@
 # 更新日志
 
+## 1.1.0
+
+### 新增
+
+- **一键生成全局亮度动画 + 菜单**（可选小工具，菜单 `Tools → NonToon 亮度控制 → 生成全局亮度动画 + 菜单`）：
+  给 avatar 下所有 NonToon 材质写一套亮度动画，并生成一个表情菜单径向滑块，
+  一根滑块控制全部材质的亮度（Light Limit Changer 的「一括調整」效果）。
+  - 生成两条动画（最暗 / 最亮）+ 单层 AnimatorController（1D 混合树）+ VRChat 菜单资源；
+  - 在 avatar 下建 `_NonToonLightLimit` 物体，挂 Modular Avatar 的 Merge Animator /
+    Menu Installer / Parameters，上传时自动接好；
+  - 可调参数名、菜单名、最暗/最亮倍数、默认倍数、输出文件夹；
+  - 有「包含 lilToon 材质槽」选项：配合一键切换开关（MA Material Setter）使用时勾上，
+    切换成 NonToon 后同样受滑块控制；
+  - 重复生成会覆盖上一次的结果，也可以一键删除（不动材质本身）。
+- 需要 VRChat SDK3 Avatars 与 Modular Avatar；缺依赖时窗口会提示，模块本身仍然不需要它们。
+
 ## 1.0.0
 
 首个版本。

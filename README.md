@@ -18,6 +18,7 @@
 | 等比保持 | 按亮度（luma）归一后夹取，暗部/亮部之间的比例不变，不会把阴影拍平 |
 | 遮罩范围 | 用共享遮罩（Shared Mask）的某个通道控制生效范围，比如只提亮脸部 |
 | 全局控制 | 用一个全局变量同时驱动所有开了「Use Global Control」的材质 |
+| 一键全局动画（可选） | 小工具给所有 NonToon 材质生成亮度动画 + 表情菜单滑块，一根滑块控制全部材质 |
 | 与 Light Boost 叠加 | 模块排在 NonToon 自带 Lighten 之后执行，先提亮再限制，两者可以一起用 |
 
 ## 安装
@@ -84,11 +85,39 @@ Shader.SetGlobalFloat("_NonToonLightLimit_Envelope", 0.6f);
 
 世界（Udon）里也可以用 `Shader.SetGlobalFloat` 驱动。
 
-> **关于 VRChat 头像的运行时控制**：Unity 的动画系统只能动画「渲染器上的材质属性」，**不能驱动 shader 全局变量**，所以头像里想让一个菜单滑条控制所有材质，只能靠给每个材质生成动画（Light Limit Changer 就是这么做的，它需要一套生成工具）。
-> 本插件只提供模块本身，不做动画生成。头像里可用的做法：
-> - 逐材质用动画控制 **Brightness** / **Min** / **Max**（这些是普通材质属性，动画/菜单都能驱动）；
-> - 或者用 MA / VRCFury 的材质属性动作批量控制；
-> - 全局变量则适合编辑器预览、脚本、以及世界。
+> **关于 VRChat 头像的运行时控制**：Unity 的动画系统只能动画「渲染器上的材质属性」，**不能驱动 shader 全局变量**，所以头像里想让一个菜单滑条控制所有材质，只能靠给每个材质生成动画。下面的小工具就是干这个的。
+
+### 4. 一键生成全局亮度动画 + 菜单（可选）
+
+菜单：**Tools → NonToon 亮度控制 → 生成全局亮度动画 + 菜单**
+
+给 avatar 下所有 NonToon 材质写一套亮度动画，并生成一个表情菜单滑块，**一根滑块控制全部材质的亮度**（就是 Light Limit Changer 那个「一括調整」的效果）。
+
+窗口里可调：
+
+| 选项 | 默认 | 说明 |
+| --- | --- | --- |
+| 目标 Avatar | 当前选中对象所在的 avatar | 需要有 VRC Avatar Descriptor |
+| 参数名 | `NonToonBrightness` | 同步的 Float 参数 |
+| 菜单名 | `亮度` | 表情菜单里显示的名字 |
+| 最暗倍数 / 最亮倍数 | 0.25 / 1.75 | 滑块两端对应的亮度倍数 |
+| 默认倍数 | 1.0 | 进游戏时的初始亮度，1 = 不改变 |
+| 输出文件夹 | `Assets/NonToonLightLimit` | 生成的动画、控制器、菜单资源放这里 |
+
+点「生成 / 更新」后会在 avatar 下建一个 `_NonToonLightLimit` 物体，挂着 Modular Avatar 的
+**Merge Animator**（把一层 FX 动画合并进去）、**Menu Installer**（挂表情菜单）、
+**Parameters**（声明同步参数），并生成两条动画（最暗 / 最亮）+ 一个单层 AnimatorController
+（1D 混合树，参数 0 = 最暗、1 = 最亮）+ 一个菜单资源（径向滑块）。上传时 MA 会自动接好。
+
+要点：
+
+* 需要 **VRChat SDK3 Avatars** 与 **Modular Avatar**；缺依赖时窗口会直接提示。
+* 滑块是通过材质属性动画（MaterialPropertyBlock）生效的，**不会修改材质资产**；
+  拖动范围内材质的 **Brightness** 数值由滑块统一决定（默认位置 = 1.0，即不改变），
+  逐材质的 **Min / Max 上下限**、遮罩范围照旧生效。
+* 用的是一键切换开关（MA Material Setter）时，渲染器上平时还是 lilToon 材质，
+  这时勾上「包含 lilToon 材质槽」再生成，切换成 NonToon 后同样受滑块控制。
+* 重复生成会先清掉上一次生成的东西；「删除已生成」可以完全撤销（不动材质本身）。
 
 ## 和 Light Limit Changer 的关系
 
@@ -96,8 +125,8 @@ Shader.SetGlobalFloat("_NonToonLightLimit_Envelope", 0.6f);
 | --- | --- | --- |
 | 支持的 shader | lilToon / Poiyomi / … | 只做 NonToon |
 | 逐材质上下限 | ✅ | ✅ |
-| 全局一个滑块控制全部 | ✅（生成动画 + 菜单） | ⚠️ 只能通过 shader 全局变量（见上） |
-| 需要生成动画/菜单的工具 | 需要 | 不需要，纯模块 |
+| 全局一个滑块控制全部 | ✅（生成动画 + 菜单） | ✅（模块 + 附带的一键生成小工具） |
+| 需要生成动画/菜单的工具 | 需要 | 可选，不生成也能用模块 |
 | 对 NonToon 的影响 | 改材质参数 | 追加一个 Shader Core 模块 |
 
 ## 原理

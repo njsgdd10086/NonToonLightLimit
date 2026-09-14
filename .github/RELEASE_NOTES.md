@@ -1,4 +1,4 @@
-**NonToon Light Limit 1.0.0** —— 给 NonToon 加上亮度上下限与亮度倍数，并支持一个全局变量统一控制，做 Light Limit Changer 式的亮度调节。
+**NonToon Light Limit 1.1.0** —— NonToon 的亮度上下限 + 亮度倍数 + 全局控制，这一版加上了「一键生成全局亮度动画 + 表情菜单滑块」。
 
 ## 安装
 
@@ -15,7 +15,7 @@
 
 ### 手动
 
-下载下方附件 `com.atrinaxu.nontoon.lightlimit-1.0.0.zip`，解压到工程的
+下载下方附件 `com.atrinaxu.nontoon.lightlimit-1.1.0.zip`，解压到工程的
 `Packages/com.atrinaxu.nontoon.lightlimit/`。
 
 ## 依赖
@@ -24,27 +24,16 @@
 | --- | --- |
 | `jp.lilxyzw.shadercore` | 模块系统（本插件以 Shader Core 模块形式注入） |
 | `jp.lilxyzw.nontoon` | 目标 shader |
+| VRChat SDK3 Avatars + Modular Avatar | 只有「一键生成全局动画 + 菜单」这个小工具需要 |
 
-## 用法
+## 本次更新
 
-1. 安装后第一次打开工程会自动登记模块，Console 会打印 `[NonToon 亮度控制] 已把模块登记到 ...`；
-2. 打开任意 NonToon 材质，找到 **NonToon Light Limit** 一组参数：
-   - `Min Brightness` / `Max Brightness`：亮度上下限；
-   - `Brightness`：亮度倍数；
-   - `Use Global Control` + `Mask Channel`：是否接受全局倍数、用共享遮罩哪个通道限制范围。
-3. 全局控制用脚本设置：
-
-   ```csharp
-   Shader.SetGlobalFloat("_NonToonLightLimit_Global", 1.3f);   // 全局亮度倍数
-   Shader.SetGlobalFloat("_NonToonLightLimit_Envelope", 0.6f); // 0..1 全局包络
-   ```
+- 新增 **一键生成全局亮度动画 + 菜单**（`Tools → NonToon 亮度控制 → 生成全局亮度动画 + 菜单`）：
+  - 自动找出 avatar 下所有 NonToon 材质，生成两条动画（最暗 / 最亮）+ 单层 AnimatorController（1D 混合树）+ 一个表情菜单径向滑块；
+  - 在 avatar 下建 `_NonToonLightLimit` 物体，挂 Modular Avatar 的 Merge Animator / Menu Installer / Parameters，上传时自动接好；
+  - 可调参数名、菜单名、最暗/最亮倍数、默认倍数、输出文件夹；
+  - 「包含 lilToon 材质槽」选项：配合 shader 一键切换开关（MA Material Setter）时勾上，切换成 NonToon 后同样受滑块控制；
+  - 重复生成会覆盖上一次，也可一键删除（不动材质本身）。
+- 亮度模块本身没有变化：上下限、亮度倍数、遮罩范围照旧，逐材质的 Min / Max 在滑块拖动时仍然生效。
 
 完整说明见 [README](https://github.com/njsgdd10086/NonToonLightLimit#readme)。
-
-## 本次内容
-
-- 亮度上下限 + 亮度倍数 + 遮罩范围 + 全局控制，全部以 Shader Core 模块实现，不改 NonToon 本体；
-- 模块排在 NonToon 自带 Light Boost 之后，两者可以叠加；
-- 自动把模块登记进 NonToon 的模块列表并落盘（重启编辑器仍生效），只追加不删除；
-- 菜单 `Tools → NonToon 亮度控制` 可手动重新登记 / 移除；
-- 同时支持 NonToon 与 NonToonFur。
