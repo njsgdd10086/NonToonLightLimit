@@ -4,4 +4,5 @@ SC_float(_Max, 1.0, [SCRange(0,2)], "Max Brightness", "亮度上限：环境再�
 SC_BoxEnd
 
 SC_float(_Brightness, 1.0, [SCRange(0,4)], "Brightness", "亮度倍数，1 = 不改变；动画 / 菜单滑块就是改这个值")
-SC_uint(_GlobalMaskChannel, 3, [SCMaskChannel], "__MaskChannel", "共享遮罩里控制生效范围的通道（默认 A，没有遮罩时全生效）")
+SC_uint(_UseSharedMask, 0, [SCToggle], "Mask Range", "只在与共享遮罩指定通道重叠的范围内生效；默认关闭 = 整块材质都生效")
+SC_uint(_GlobalMaskChannel, 3, [SCMaskChannel], "__MaskChannel", "生效范围用共享遮罩的哪个通道（RGBA）")

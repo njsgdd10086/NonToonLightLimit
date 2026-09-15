@@ -19,11 +19,14 @@
 // 逐材质参数（自动带 _com_atrinaxu_nontoon_lightlimit_ 前缀）：
 //   _Min / _Max            亮度上下限
 //   _Brightness            亮度倍数（动画 / 菜单滑块改的就是它）
+//   _UseSharedMask         是否用共享遮罩限制生效范围（默认关闭 = 整块材质都生效）
 //   _GlobalMaskChannel     生效范围用共享遮罩的哪个通道
 
 {
-    // 共享遮罩里用于限制生效范围的通道；没设遮罩时该通道为 1，即整体生效
-    half llMask = saturate(sd.mask[_GlobalMaskChannel]);
+    // 生效范围：默认不限制（整块材质都生效）。
+    // 之前这里是「没勾选就直接读 A 通道」，结果转换插件把别的遮罩（描边 / 高光 / 材质捕获…）
+    // 烘焙进 A 通道以后，那些材质会莫名其妙地「亮度调不动」——所以改成显式开关。
+    half llMask = _UseSharedMask != 0 ? saturate(sd.mask[_GlobalMaskChannel]) : 1.0;
 
     if (llMask > 0)
     {

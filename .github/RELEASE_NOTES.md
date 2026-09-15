@@ -1,48 +1,36 @@
-**NonToon Light Limit 1.1.7** —— 修掉「退出菜单数值归零 / 滑过一半跳回 0 / 部分部件不跟着走」的问题。
+**NonToon Light Limit 1.1.8** —— 修掉「某些材质怎么调亮度都没反应」，原因是共享遮罩的通道被别处占用。
 
 ## 根因
 
-VRChat 官方文档（[Expressions Menu and Controls](https://creators.vrchat.com/avatars/expression-menu-and-controls/)）规定：
-**Puppet 类控件的 `Parameter` 字段不是数值参数，而是「这个 puppet 是否打开」的开关**（打开时=1，**退出菜单时清零**）；
-真正的数值要写在 **`Sub-Parameters`** 里（径向就是 0..1 的那一个）。
+亮度模块的「生效范围」以前是**直接读 NonToon 共享遮罩（`_SharedMask`）的 A 通道**，没设遮罩时才全生效。
+但 `_SharedMask` 是 NonToon **所有模块共用**的一张 RGBA 贴图：转换插件（LilToNonToon Switcher）
+会把 lilToon 的描边 / 高光 / 材质捕获等遮罩烘进各自的通道。只要有一个模块占用了 A 通道，
+**其它材质在 A 通道是黑色的部位就会 `llMask = 0`** —— 表现就是：
 
-之前把数值参数写进了 `Parameter`，于是：
+- 这块材质（例如身体 / 脖子）怎么调亮度都不动；
+- 把材质上的共享遮罩删掉，又一切正常。
 
-- 拖动时客户端往这个字段写 0/1 → 动画只收到跳变；
-- **退出菜单时该字段按语义清零** → 你看到的"退出变 0"；
-- 滑过一半触发状态翻转 → "滑到 50 以上变回 0"；
-- 数值参数从未真正被写入 → 部分材质看起来"不跟着走"。
+## 现在
 
-## 现在改成
-
-```yaml
-type: 203                                     # RadialPuppet
-parameter:  { name: "" }                      # 开关字段留空，不额外占参数
-subParameters:
-- { name: NonToonBrightness }                 # 0..1 的数值写到这里
-```
-
-## 已验证（从构建产物 .vrca 里读出来的）
+「生效范围」改成**显式开关**：
 
 ```
-参数: NonToonBrightness  valueType=Float  saved=True  defaultValue=0.5714286  synced=False
-菜单项: type=RadialPuppet  "NonToon亮度菜单"
-    parameter     = ""
-    subParameters = NonToonBrightness
+Mask Range（默认关闭）   关闭 = 整块材质都生效
+Mask Channel            勾上以后用共享遮罩的哪个通道（R/G/B/A）
 ```
 
-> `synced=False` 是正常的：Puppet 参数在 VRChat 里本来就是"打开时用 IK 同步"的本地参数，
-> 官方文档里也写了 Puppet 的参数不走普通 Playable 同步。
+默认关闭意味着：**转换插件烘出来的共享遮罩留着也没关系**，亮度依旧整块生效；
+想要「只在某个范围内提亮」再自己勾上并选通道。
 
-## 升级后请这样做
+## 升级后
 
-1. ALCOM 更新到 1.1.7；
-2. 工具窗口点 **删除已生成** → **生成 / 更新**；
-3. 上传，在真机里确认：拖动滑块 → 亮度连续变化；**退出菜单后数值保留**。
+1. ALCOM 更新到 1.1.8；
+2. 之前为了绕开这个问题删掉的共享遮罩可以放回去了（放回去能让描边 / 高光 / 材质捕获的遮罩继续起作用）；
+3. 如果你的材质确实需要按范围生效，打开材质上的 `NonToon Light Limit → Mask Range` 并选通道。
 
 ## 安装 / 升级
 
-VCC / ALCOM 仓库地址（总仓库，本插件与 LilToNonToon Switcher 都在这份索引里）：
+VCC / ALCOM 仓库地址（总仓库，本插件与转换插件都在这份索引里）：
 
 ```
 https://njsgdd10086.github.io/vpm-listing/index.json
