@@ -26,14 +26,18 @@
 ### 方式一：VCC / ALCOM（推荐）
 
 1. 打开 VCC（或 ALCOM），进入 **Settings → Packages → Add Repository**；
-2. 填入本仓库的 VPM 索引地址：
+2. 填入总仓库地址（**一个链接就够**，本插件和 [LilToNonToon Switcher](https://github.com/njsgdd10086/LilToNonToonSwitcher) 都在这份索引里）：
 
    ```
-   https://njsgdd10086.github.io/NonToonLightLimit/index.json
+   https://njsgdd10086.github.io/LilToNonToonSwitcher/index.json
    ```
 
 3. 在包列表里找到 **NonToon Light Limit**，点 Install。
 4. 依赖的 `jp.lilxyzw.shadercore` 与 `jp.lilxyzw.nontoon` 会自动装上（如果项目里还没有）。
+
+> 这份索引就是「**ATRI_NAIXU VPM Packages**」总仓库，要装哪些插件自己勾。
+> 本仓库自己的地址 `https://njsgdd10086.github.io/NonToonLightLimit/index.json`
+> 内容是同一份，加过一个就不用再加第二个。
 
 ### 方式二：手动放进 Packages
 
