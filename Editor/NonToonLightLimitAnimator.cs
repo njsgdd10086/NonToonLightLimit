@@ -385,8 +385,15 @@ namespace AtriNaxu.NonToonLightLimit
 
         /// <summary>
         /// 造一个「径向滑块」菜单控件（VRCExpressionsMenu.Control）。
-        /// 注意：不自己生成 VRCExpressionsMenu 资源，而是交给 Modular Avatar 的
-        /// Menu Item + Menu Installer 组件去建菜单 —— 和 MA 自己的「Create Toggle」同一条路。
+        ///
+        /// 字段语义（照 VRChat 官方文档「Expressions Menu and Controls」）：
+        ///   · Puppet 类控件的 parameter    = 「这个 puppet 是否打开」的开关参数（打开=1，退出菜单时清零）；
+        ///   · Puppet 类控件的 subParameters = 真正的数值参数（径向就是 0..1 的那一个）。
+        /// 所以数值参数必须放进 subParameters —— 放错到 parameter 里就会出现
+        /// 「退出菜单数值归零 / 滑过一半就跳回 0」这种问题。
+        ///
+        /// 顺带一提：不自己生成 VRCExpressionsMenu 资源，菜单交给 Modular Avatar 的
+        /// Menu Item + Menu Installer 组件在构建时生成（和 MA 自己的「Create Toggle」同一条路）。
         /// </summary>
         private static object CreateRadialControl(string label, string parameterName)
         {
@@ -401,15 +408,22 @@ namespace AtriNaxu.NonToonLightLimit
             var control = Activator.CreateInstance(controlType);
             SetMember(control, "name", label);
             SetEnumMember(control, "type", "RadialPuppet");
+            SetMember(control, "value", 1f);
 
             var parameterType = controlType.GetNestedType("Parameter");
-            if (parameterType != null)
-            {
-                var parameter = Activator.CreateInstance(parameterType);
-                SetMember(parameter, "name", parameterName);
-                SetMember(control, "parameter", parameter);
-            }
-            SetMember(control, "value", 1f);
+            if (parameterType == null) return control;
+
+            // 「开关」字段留空：不需要额外占一个参数
+            var emptySwitch = Activator.CreateInstance(parameterType);
+            SetMember(emptySwitch, "name", "");
+            SetMember(control, "parameter", emptySwitch);
+
+            // 真正的数值参数放 subParameters[0]
+            var radialValue = Activator.CreateInstance(parameterType);
+            SetMember(radialValue, "name", parameterName);
+            var array = Array.CreateInstance(parameterType, 1);
+            array.SetValue(radialValue, 0);
+            SetMember(control, "subParameters", array);
             return control;
         }
 

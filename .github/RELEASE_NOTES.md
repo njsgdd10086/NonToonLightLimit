@@ -1,32 +1,44 @@
-**NonToon Light Limit 1.1.6** —— 修掉「生成菜单和参数」后上传失败（`Index was outside the bounds of the array`）的问题。
+**NonToon Light Limit 1.1.7** —— 修掉「退出菜单数值归零 / 滑过一半跳回 0 / 部分部件不跟着走」的问题。
 
-## 修复内容
+## 根因
 
-- **菜单改用 Modular Avatar 自己的组件来挂**，和 MA 的 `GameObject → Modular Avatar → Create Toggle`
-  完全同一条路：同一个物体上放
+VRChat 官方文档（[Expressions Menu and Controls](https://creators.vrchat.com/avatars/expression-menu-and-controls/)）规定：
+**Puppet 类控件的 `Parameter` 字段不是数值参数，而是「这个 puppet 是否打开」的开关**（打开时=1，**退出菜单时清零**）；
+真正的数值要写在 **`Sub-Parameters`** 里（径向就是 0..1 的那一个）。
 
-  * **MA Menu Item**（`RadialPuppet` 控件 + 参数名，`isSynced / isSaved / isDefault` 都开）
-  * **MA Menu Installer**（`Menu to Append` 留空）
+之前把数值参数写进了 `Parameter`，于是：
 
-  菜单由 Modular Avatar 在构建时生成。之前的写法是插件自己 `CreateInstance` 造一个
-  `VRCExpressionsMenu` 资源再挂到 `Menu to Append` 上，有用户的工程在这种写法下上传会失败
-  （`BuilderException: Index was outside the bounds of the array`），换成 MA 的标准写法后恢复正常。
-- 因此**不再生成 `*_Brightness_Menu.asset`**，输出文件夹里只剩两条动画 + 一个 AnimatorController。
-- 另外这一版把生成内容拆成两个可单独勾选的部分（动画层 / 菜单和参数），方便只想用一半的情况。
+- 拖动时客户端往这个字段写 0/1 → 动画只收到跳变；
+- **退出菜单时该字段按语义清零** → 你看到的"退出变 0"；
+- 滑过一半触发状态翻转 → "滑到 50 以上变回 0"；
+- 数值参数从未真正被写入 → 部分材质看起来"不跟着走"。
 
-## 已经验证过
+## 现在改成
 
-- 生成后组件为：`MA Merge Animator` + `MA Menu Item`（RadialPuppet / NonToonBrightness）+ `MA Menu Installer` + `MA Parameters`；
-- 完整构建（Build & Test 的导出路径）通过，构建产物里的合并菜单包含
-  `NonToon亮度菜单 / type 203 / NonToonBrightness`；
-- 动画层单独生成时上传也正常（用户实测）。
+```yaml
+type: 203                                     # RadialPuppet
+parameter:  { name: "" }                      # 开关字段留空，不额外占参数
+subParameters:
+- { name: NonToonBrightness }                 # 0..1 的数值写到这里
+```
+
+## 已验证（从构建产物 .vrca 里读出来的）
+
+```
+参数: NonToonBrightness  valueType=Float  saved=True  defaultValue=0.5714286  synced=False
+菜单项: type=RadialPuppet  "NonToon亮度菜单"
+    parameter     = ""
+    subParameters = NonToonBrightness
+```
+
+> `synced=False` 是正常的：Puppet 参数在 VRChat 里本来就是"打开时用 IK 同步"的本地参数，
+> 官方文档里也写了 Puppet 的参数不走普通 Playable 同步。
 
 ## 升级后请这样做
 
-1. ALCOM 更新到 1.1.6；
-2. 工具窗口点 **删除已生成**（清掉旧写法留下的菜单资源引用），再点 **生成 / 更新**；
-3. 旧版本生成的 `*_Brightness_Menu.asset` 已经没用了，可以连同 `Assets/NonToonLightLimit` 里那一份一起删掉；
-4. 然后 Build & Test。
+1. ALCOM 更新到 1.1.7；
+2. 工具窗口点 **删除已生成** → **生成 / 更新**；
+3. 上传，在真机里确认：拖动滑块 → 亮度连续变化；**退出菜单后数值保留**。
 
 ## 安装 / 升级
 

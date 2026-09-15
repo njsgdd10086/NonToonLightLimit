@@ -1,5 +1,27 @@
 # 更新日志
 
+## 1.1.7
+
+### 修复
+
+- **径向滑块写错了字段**：按 VRChat 官方文档（Expressions Menu and Controls），Puppet 类控件的
+  * `parameter` = 「这个 puppet 是否打开」的开关参数（打开时=1，**退出菜单时清零**）；
+  * `subParameters` = 真正的数值参数（径向就是 0..1 的那一个）。
+
+  之前把数值参数塞进了 `parameter`，于是出现：**退出菜单数值归零**、**滑过一半就跳回 0**、
+  动画只收到 0/1 的跳变（看起来"某些部件不跟着走"）。现在改成官方写法：
+
+  ```yaml
+  type: 203            # RadialPuppet
+  parameter:  { name: "" }                    # 开关字段留空，不额外占参数
+  subParameters:
+  - { name: NonToonBrightness }               # 0..1 的数值写到这里
+  ```
+
+- 已经从构建产物（.vrca）里核对：`NonToonBrightness` 为 Float、默认值 = 滑块默认位置，
+  菜单项为 `RadialPuppet / parameter="" / subParameters=[NonToonBrightness]` ✓
+  （Puppet 参数在 VRChat 里本来就是「打开时用 IK 同步」的本地参数，所以 networkSynced=False 是正常的。）
+
 ## 1.1.6
 
 ### 修复
