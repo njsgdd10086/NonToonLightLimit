@@ -1,5 +1,16 @@
 # 更新日志
 
+## 1.1.4
+
+### 新增 / 排查
+
+- **窗口里显示同步参数预算**：用 Modular Avatar 的 `ParameterInfo.ForUI` 读这个 avatar 的同步参数用量
+  （和 MA 的 `Show Modular Avatar Information` 窗口同一份数据），显示「已用 X / 3200 bit · 同步参数 N 个」。
+  滑块要再加一个 8 bit 的同步 Float，预算不够（< 8 bit）或参数个数 ≥ 250 时会直接给出警告 ——
+  VRChat 的上限是 3200 bit / 256 个同步参数，超了上传会失败，部分 SDK 版本会报
+  `Index was outside the bounds of the array`。
+- 生成时也会把参数预算写进 Console 日志。
+
 ## 1.1.3
 
 ### 修复

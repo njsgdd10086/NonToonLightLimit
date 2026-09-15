@@ -103,6 +103,60 @@ namespace AtriNaxu.NonToonLightLimit
             return result;
         }
 
+        /// <summary>
+        /// 这个 avatar 的同步参数用量（VRChat 上限：3200 bit / 256 个）。
+        /// 用 Modular Avatar 自己的 ParameterInfo.ForUI 来算，和 MA 的「Show Modular Avatar Information」窗口同一份数据。
+        /// 拿不到就返回 null（比如没装 MA）。
+        /// </summary>
+        internal static string DescribeParameterBudget(GameObject avatarRoot, out int usedBits, out int syncedCount, out int remainingBits)
+        {
+            usedBits = -1;
+            syncedCount = -1;
+            remainingBits = -1;
+            if (avatarRoot == null) return null;
+
+            try
+            {
+                var parameterInfoType = FindType("nadena.dev.ndmf.ParameterInfo");
+                var forUi = parameterInfoType?.GetProperty("ForUI",
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null, null);
+                if (forUi == null) return null;
+
+                var method = forUi.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                    .Where(m => m.Name == "GetParametersForObject")
+                    .OrderBy(m => m.GetParameters().Length)
+                    .FirstOrDefault();
+                if (method == null) return null;
+
+                var arguments = new object[method.GetParameters().Length];
+                arguments[0] = avatarRoot;
+                for (var i = 1; i < arguments.Length; i++) arguments[i] = null;
+
+                if (!(method.Invoke(forUi, arguments) is System.Collections.IEnumerable list)) return null;
+
+                var bits = 0;
+                var count = 0;
+                foreach (var item in list)
+                {
+                    var itemType = item.GetType();
+                    var usage = itemType.GetProperty("BitUsage", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                    var value = usage != null ? Convert.ToInt32(usage.GetValue(item, null)) : 0;
+                    bits += value;
+                    if (value > 0) count++;
+                }
+
+                usedBits = bits;
+                syncedCount = count;
+                remainingBits = 3200 - bits;
+                return "已用 " + bits + " / 3200 bit（剩 " + (3200 - bits) + "）· 同步参数 " + count + " 个（上限 256）";
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning("[NonToon 亮度控制] 读取参数用量失败：" + exception.Message);
+                return null;
+            }
+        }
+
         /// <summary>生成（或重新生成）整套东西。</summary>
         internal static bool Generate(LightLimitAnimationRequest request)
         {
@@ -173,12 +227,21 @@ namespace AtriNaxu.NonToonLightLimit
                 AssetDatabase.SaveAssets();
                 if (!Application.isBatchMode) SceneView.RepaintAll();
 
+                var budget = DescribeParameterBudget(request.AvatarRoot, out var usedBits, out var syncedCount, out var remainingBits);
+                if (remainingBits >= 0 && remainingBits < 8)
+                {
+                    Debug.LogWarning("[NonToon 亮度控制] 同步参数预算已经很紧（" + budget + "）：" +
+                                     "这个滑块要占 8 bit，如果上传时报 `Index was outside the bounds of the array`，" +
+                                     "先把没用的同步参数删掉再传。");
+                }
+
                 log.AppendLine("目标 avatar    : " + request.AvatarRoot.name);
                 log.AppendLine("生效渲染器    : " + targets.Count + " 个（材质属性 " + BrightnessProperty +
                                (request.IncludeLilToon ? "，含仍是 lilToon 的材质槽" : "") + "）");
                 log.AppendLine("滑块范围      : 参数 " + request.ParameterName + "  0 → 亮度 ×" + min.ToString("0.##") +
                                "，1 → 亮度 ×" + max.ToString("0.##") + "，默认值 " + defaultSlider.ToString("0.###"));
                 log.AppendLine("生成资源      : " + folder);
+                log.AppendLine("参数预算      : " + (budget ?? "（读取不到，需要 Modular Avatar）"));
                 log.AppendLine("场景物体      : " + request.AvatarRoot.name + "/" + ContainerName +
                                "（MA Merge Animator + Menu Installer + Parameters）");
                 log.AppendLine("用法          : 上传后表情菜单里会出现「" + request.MenuLabel + "」滑块，" +

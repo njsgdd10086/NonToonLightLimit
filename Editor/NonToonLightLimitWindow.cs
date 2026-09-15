@@ -126,6 +126,31 @@ namespace AtriNaxu.NonToonLightLimit
                                         MessageType.Warning);
             }
 
+            // 同步参数预算：滑块本身要占一个 8 bit 的同步 Float 参数
+            if (hasAvatar)
+            {
+                var budget = NonToonLightLimitAnimator.DescribeParameterBudget(avatar, out _, out var syncedCount, out var remainingBits);
+                if (budget != null)
+                {
+                    EditorGUILayout.LabelField("参数预算：" + budget, EditorStyles.miniLabel);
+                    if (remainingBits < 8)
+                    {
+                        EditorGUILayout.HelpBox(
+                            "同步参数预算不够了：这个滑块要再加一个 8 bit 的同步 Float 参数。\n" +
+                            "VRChat 上限是 3200 bit / 256 个同步参数，超了上传会失败（有的 SDK 版本会直接报 " +
+                            "Index was outside the bounds of the array）。\n" +
+                            "可以先删掉没用的同步参数（Modular Avatar 的 Show Modular Avatar Information 窗口里有明细），" +
+                            "或者不用滑块，只逐材质调 Brightness。",
+                            MessageType.Warning);
+                    }
+                    else if (syncedCount >= 250)
+                    {
+                        EditorGUILayout.HelpBox("同步参数个数已经 " + syncedCount + " 个（上限 256），再加一个可能会超。",
+                                                MessageType.Warning);
+                    }
+                }
+            }
+
             EditorGUILayout.Space();
             using (new EditorGUILayout.HorizontalScope())
             {
