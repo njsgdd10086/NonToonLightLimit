@@ -1,5 +1,17 @@
 # 更新日志
 
+## 1.1.3
+
+### 修复
+
+- **生成物被挪进 prefab 实例（比如服装的「装饰开关」）后清理不掉**：配置 `_NonToonLightLimit` 里的
+  Merge Animator / Menu Installer / Parameters 时用的是 `DestroyImmediate`，在 prefab 实例里删不动，
+  会留下重复的菜单安装点，导致 Modular Avatar 把菜单挂到别处（游戏里菜单里看不到滑块）、
+  上传/构建阶段报错。现在改用 `Undo.DestroyObjectImmediate`，并且会：
+  - 把被挪走的同名物体删掉并在日志里说明；
+  - 发现它上面挂着 Modular Avatar 的「菜单安装点」（Menu Install Target）时一并清掉；
+  - 重建时始终放在 **avatar 根目录**下。
+
 ## 1.1.2
 
 ### 修复

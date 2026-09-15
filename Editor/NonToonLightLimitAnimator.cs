@@ -202,12 +202,11 @@ namespace AtriNaxu.NonToonLightLimit
             {
                 if (request.AvatarRoot != null)
                 {
-                    // 全部删掉：用户可能把生成的物体挪到别处，或者不小心复制出了好几份，
+                    // 全部删掉：用户可能把生成的物体挪到别处、或者复制出了好几份，
                     // 留着多份会让 MA 重复挂菜单 / 重复声明参数，上传会出问题。
                     foreach (var container in FindContainers(request.AvatarRoot.transform))
                     {
-                        UnityEngine.Object.DestroyImmediate(container);
-                        removedSomething = true;
+                        if (RemoveContainer(container)) removedSomething = true;
                     }
                 }
 
@@ -366,7 +365,16 @@ namespace AtriNaxu.NonToonLightLimit
 
             // 之前生成的全都清掉（可能不止一个：被挪走或复制过），再重建一个干净的
             foreach (var existing in FindContainers(request.AvatarRoot.transform))
-                UnityEngine.Object.DestroyImmediate(existing);
+            {
+                if (existing.transform.parent != request.AvatarRoot.transform)
+                    Debug.LogWarning("[NonToon 亮度控制] 发现被挪到别处的 " + ContainerName + "：" +
+                                     RelativePath(request.AvatarRoot.transform, existing.transform) +
+                                     "，已删掉，会重新建在 avatar 根目录下。");
+                if (HasMenuInstallTarget(existing))
+                    Debug.LogWarning("[NonToon 亮度控制] " + ContainerName + " 上还挂着 Modular Avatar 的「菜单安装点」" +
+                                     "（Menu Install Target），它会改变菜单安装位置，已一并删掉。");
+                RemoveContainer(existing);
+            }
 
             var container = new GameObject(ContainerName);
             container.transform.SetParent(request.AvatarRoot.transform, false);
@@ -455,6 +463,8 @@ namespace AtriNaxu.NonToonLightLimit
         /// avatar 下所有叫 _NonToonLightLimit 的物体（递归找，而且返回全部）。
         /// 生成时会把它们都清掉再重建：重复的 Merge Animator / Menu Installer / Parameters
         /// 会让 Modular Avatar 重复挂菜单、重复声明参数，上传阶段会直接报错。
+        /// 注意：用户可能把物体挪进了某个服装的「装饰开关」里（属于 prefab 实例），
+        /// 那里删起来要用 Undo.DestroyObjectImmediate，DestroyImmediate 删不动 prefab 实例里的东西。
         /// </summary>
         private static List<GameObject> FindContainers(Transform avatarRoot)
         {
@@ -465,6 +475,32 @@ namespace AtriNaxu.NonToonLightLimit
                 if (transform != avatarRoot && transform.name == ContainerName) result.Add(transform.gameObject);
             }
             return result;
+        }
+
+        /// <summary>删掉一个生成物（在 prefab 实例里也能删掉），返回是否真的删了。</summary>
+        private static bool RemoveContainer(GameObject container)
+        {
+            if (container == null) return false;
+            try
+            {
+                if (Application.isBatchMode) UnityEngine.Object.DestroyImmediate(container);
+                else Undo.DestroyObjectImmediate(container);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning("[NonToon 亮度控制] 删除 " + container.name + " 失败：" + exception.Message +
+                                 "\n（它可能在 prefab 实例里，请手动删掉）");
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>这个物体上有没有 Modular Avatar 的「菜单安装点」——有的话 MA 会把菜单挂到它下面，多半不是我们要的。</summary>
+        private static bool HasMenuInstallTarget(GameObject container)
+        {
+            var type = FindType("nadena.dev.modular_avatar.core.ModularAvatarMenuInstallTarget");
+            if (type == null) return false;
+            return container.GetComponent(type) != null;
         }
 
         private static string RelativePath(Transform root, Transform target)
