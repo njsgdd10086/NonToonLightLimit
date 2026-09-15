@@ -202,12 +202,12 @@ namespace AtriNaxu.NonToonLightLimit
             {
                 if (request.AvatarRoot != null)
                 {
-                    var existing = FindContainer(request.AvatarRoot.transform);
-                    while (existing != null)
+                    // 全部删掉：用户可能把生成的物体挪到别处，或者不小心复制出了好几份，
+                    // 留着多份会让 MA 重复挂菜单 / 重复声明参数，上传会出问题。
+                    foreach (var container in FindContainers(request.AvatarRoot.transform))
                     {
-                        UnityEngine.Object.DestroyImmediate(existing.gameObject);
+                        UnityEngine.Object.DestroyImmediate(container);
                         removedSomething = true;
-                        existing = FindContainer(request.AvatarRoot.transform);
                     }
                 }
 
@@ -364,8 +364,9 @@ namespace AtriNaxu.NonToonLightLimit
             var parametersType = FindType("nadena.dev.modular_avatar.core.ModularAvatarParameters");
             if (mergeType == null || installerType == null || parametersType == null) return null;
 
-            var existing = FindContainer(request.AvatarRoot.transform);
-            if (existing != null) UnityEngine.Object.DestroyImmediate(existing.gameObject);
+            // 之前生成的全都清掉（可能不止一个：被挪走或复制过），再重建一个干净的
+            foreach (var existing in FindContainers(request.AvatarRoot.transform))
+                UnityEngine.Object.DestroyImmediate(existing);
 
             var container = new GameObject(ContainerName);
             container.transform.SetParent(request.AvatarRoot.transform, false);
@@ -447,13 +448,23 @@ namespace AtriNaxu.NonToonLightLimit
 
         private static GameObject FindContainer(Transform avatarRoot)
         {
-            if (avatarRoot == null) return null;
-            for (var i = 0; i < avatarRoot.childCount; i++)
+            return FindContainers(avatarRoot).FirstOrDefault();
+        }
+
+        /// <summary>
+        /// avatar 下所有叫 _NonToonLightLimit 的物体（递归找，而且返回全部）。
+        /// 生成时会把它们都清掉再重建：重复的 Merge Animator / Menu Installer / Parameters
+        /// 会让 Modular Avatar 重复挂菜单、重复声明参数，上传阶段会直接报错。
+        /// </summary>
+        private static List<GameObject> FindContainers(Transform avatarRoot)
+        {
+            var result = new List<GameObject>();
+            if (avatarRoot == null) return result;
+            foreach (var transform in avatarRoot.GetComponentsInChildren<Transform>(true))
             {
-                var child = avatarRoot.GetChild(i);
-                if (child.name == ContainerName) return child.gameObject;
+                if (transform != avatarRoot && transform.name == ContainerName) result.Add(transform.gameObject);
             }
-            return null;
+            return result;
         }
 
         private static string RelativePath(Transform root, Transform target)
