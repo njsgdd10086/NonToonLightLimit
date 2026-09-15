@@ -1,5 +1,19 @@
 # 更新日志
 
+## 1.1.1
+
+### 修复
+
+- **修掉 NonToon 编译报错（装完插件角色变粉）**：Shader Core 的 phase 代码是**原样插进片段着色函数体里**的
+  （NonToon 的 `urp.hlsl:127` / `birp.hlsl:129` 都在函数内部），之前 `phase_modifylight.hlsl` 在文件里
+  声明了全局变量和辅助函数，插进函数体后是非法 HLSL，会报
+  `syntax error: unexpected token '('` 与 `undeclared identifier 'color'`。
+  现在整段改成只含语句和局部变量的 `{ }` 块。
+- 顺带**去掉 shader 全局变量**（`_NonToonLightLimit_Global` / `_NonToonLightLimit_Envelope`）和材质上的
+  `Use Global Control`：Shader Core 的模块没法声明全局变量，这部分本来就编译不过。
+  要「一根滑块控制所有材质」请用**一键生成全局亮度动画 + 菜单**（它驱动每块材质的 Brightness）。
+- 材质参数简化为：`Min Brightness` / `Max Brightness` / `Brightness` / `Mask Channel`。
+
 ## 1.1.0
 
 ### 新增

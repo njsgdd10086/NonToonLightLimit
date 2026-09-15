@@ -37,6 +37,54 @@ def check_meta(root: pathlib.Path, paths: list[pathlib.Path], what: str) -> None
         fail(f"以下{what}缺少 .meta：" + ", ".join(missing))
 
 
+def strip_comments(code: str) -> str:
+    code = re.sub(r"/\*.*?\*/", "", code, flags=re.S)
+    return re.sub(r"//[^\n]*", "", code)
+
+
+# phase 代码会被 Shader Core 原样插进片段着色函数体里，所以只能是一段语句块：
+# 不能声明全局变量、不能定义函数、不能用 static（1.1.0 就是因为这个把 NonToon 编译搞挂了）。
+FUNCTION_PATTERN = re.compile(
+    r"^\s*(?:static\s+)?(?:inline\s+)?(?:half|float|double|void|int|uint|bool"
+    r"|half[234]|float[234]|half[234]x[234]|float[234]x[234])\s+\w+\s*\(",
+    re.M,
+)
+
+
+def check_phase_file(path: pathlib.Path, root: pathlib.Path) -> None:
+    relative = path.relative_to(root).as_posix()
+    code = strip_comments(path.read_text(encoding="utf-8"))
+
+    lines = [line.strip() for line in code.splitlines() if line.strip()]
+    if not lines:
+        fail(f"{relative} 是空的")
+
+    depth = 0
+    blocks = 0
+    for number, line in enumerate(lines, start=1):
+        if depth == 0:
+            if line == "{":
+                blocks += 1
+                if blocks > 1:
+                    fail(f"{relative} 顶层只能有一个 {{ }} 块，第 {number} 行还有别的内容：{line}")
+            elif not line.startswith("{"):
+                fail(f"{relative} 第 {number} 行不在 {{ }} 块里：{line}\n"
+                     f"（phase 代码会被插进函数体，只能写语句和局部变量）")
+        depth += line.count("{") - line.count("}")
+        if depth < 0:
+            fail(f"{relative} 第 {number} 行花括号数量不对：{line}")
+
+    if depth != 0:
+        fail(f"{relative} 花括号不匹配")
+    if blocks == 0:
+        fail(f"{relative} 里没有 {{ }} 语句块")
+
+    if re.search(r"\bstatic\b", code):
+        fail(f"{relative} 不能出现 static（phase 代码在函数体里）")
+    if FUNCTION_PATTERN.search(code):
+        fail(f"{relative} 不能定义函数（phase 代码在函数体里，需要计算就写局部变量）")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", default=".", help="包根目录")
@@ -87,6 +135,13 @@ def main() -> int:
         text = path.read_text(encoding="utf-8")
         if text.count("{") != text.count("}"):
             fail(f"{path.name} 花括号不匹配（{{={text.count('{')} }}={text.count('}')}）")
+
+    # phase 文件结构检查（插进函数体，只能写语句块）
+    phase_files = sorted(root.glob("Shaders/Modules/*/phase_*.hlsl"))
+    if not phase_files:
+        fail("Shaders/Modules/*/ 下没有 phase_*.hlsl")
+    for path in phase_files:
+        check_phase_file(path, root)
 
     # .scmodule 必须是合法 JSON，且 uniqueID 与 C# 常量一致
     module_path = root / MODULE_FILE

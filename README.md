@@ -65,28 +65,23 @@
 | --- | --- | --- |
 | **Min Brightness** | 0 | 亮度下限。0.2 表示最暗的地方也按 0.2 的亮度渲染 |
 | **Max Brightness** | 1 | 亮度上限。NonToon 原本在 shader 里把上限压死在 1，调大可以放开 |
-| **Brightness** | 1 | 亮度倍数，1 = 不改变；想做整体调亮/调暗就改这里 |
-| **Use Global Control** | 关 | 打开后额外乘上全局倍数（见下一节） |
+| **Brightness** | 1 | 亮度倍数，1 = 不改变；想做整体调亮/调暗就改这里（菜单滑块驱动的也是它） |
 | **Mask Channel** | A | 用共享遮罩的哪个通道限制生效范围；没设共享遮罩时全生效 |
 
 想批量改，可以直接框选多个 `.mat` 在 Inspector 里改，这些参数都是可动画的材质属性。
 
-### 3. 全局控制
+### 3. 全局控制（一个滑块控制所有材质）
 
-全局值是 **shader 全局变量**，用脚本设置一次，所有开了 **Use Global Control** 的材质都会跟着变：
+Shader Core 的模块代码是插在函数体里的，**声明不了 shader 全局变量**，所以「全局控制」不是在 shader 里做的，
+而是用下面第 4 节的小工具：它给所有材质的 `Brightness` 写同一条动画，再用一个表情菜单滑块驱动，
+**一根滑块控制全部材质**。
 
-| 全局变量 | 默认 | 作用 |
-| --- | --- | --- |
-| `_NonToonLightLimit_Global` | 1 | 全局亮度倍数 |
-| `_NonToonLightLimit_Envelope` | 0 | 全局包络，> 0 时改用它：0 = 压到各材质的下限，1 = 放开到各材质的上限 |
+不用那个小工具也可以，只要自己驱动这些材质属性就行：
 
-```csharp
-// 编辑器里预览：把所有开了全局控制的材质整体调亮 30%
-Shader.SetGlobalFloat("_NonToonLightLimit_Global", 1.3f);
-
-// 或者用一个 0..1 的滑块统一控制明暗
-Shader.SetGlobalFloat("_NonToonLightLimit_Envelope", 0.6f);
-```
+* 在动画里逐材质改 **Brightness** / **Min** / **Max**——它们是普通材质属性，动画、菜单、
+  MA / VRCFury 的材质属性动作都能驱动；
+* 只想让一部分生效（比如不动脸），用 **Mask Channel** 选一个特定通道；
+* 想让某些材质完全不受影响：把它的 **Mask Channel** 指向一个全 0 的通道，或者干脆不把它写进动画。
 
 世界（Udon）里也可以用 `Shader.SetGlobalFloat` 驱动。
 
