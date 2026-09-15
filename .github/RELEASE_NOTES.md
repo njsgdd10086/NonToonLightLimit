@@ -1,24 +1,32 @@
-**NonToon Light Limit 1.1.3** —— 修掉「生成物被挪进 prefab 实例后清理不掉」导致菜单挂错位置 / 构建报错的问题。
+**NonToon Light Limit 1.1.6** —— 修掉「生成菜单和参数」后上传失败（`Index was outside the bounds of the array`）的问题。
 
 ## 修复内容
 
-- **清理生成物改用 `Undo.DestroyObjectImmediate`**：之前用 `DestroyImmediate`，如果 `_NonToonLightLimit`
-  被挪进了服装的「装饰开关」之类属于 **prefab 实例** 的物体里，就删不掉，会留下重复的
-  **MA Merge Animator / Menu Installer / Menu Install Target**，于是：
-  - Modular Avatar 把菜单挂到了别的位置 → 游戏 / Gesture Manager 里看不到亮度滑块；
-  - 构建阶段报 `Index was outside the bounds of the array`。
-- 现在生成/删除时还会：
-  - 把被挪到别处的同名物体删掉，并在 Console 里说明它在哪；
-  - 发现同名物体上挂着 MA 的「菜单安装点」（Menu Install Target）时一并清掉；
-  - 始终把新建的 `_NonToonLightLimit` 放在 **avatar 根目录**下。
+- **菜单改用 Modular Avatar 自己的组件来挂**，和 MA 的 `GameObject → Modular Avatar → Create Toggle`
+  完全同一条路：同一个物体上放
 
-## 建议操作
+  * **MA Menu Item**（`RadialPuppet` 控件 + 参数名，`isSynced / isSaved / isDefault` 都开）
+  * **MA Menu Installer**（`Menu to Append` 留空）
 
-1. ALCOM 更新到 1.1.3；
-2. 打开 **Tools → NonToon 亮度控制 → 生成全局亮度动画 + 菜单**；
-3. 先点 **删除已生成**（会清掉所有同名物体，包括被挪走的和带 Menu Install Target 的），
-   再点 **生成 / 更新**；
-4. 生成的 `_NonToonLightLimit` **不要再拖进服装的装饰开关里**（保持在 avatar 根目录），然后 Build & Test。
+  菜单由 Modular Avatar 在构建时生成。之前的写法是插件自己 `CreateInstance` 造一个
+  `VRCExpressionsMenu` 资源再挂到 `Menu to Append` 上，有用户的工程在这种写法下上传会失败
+  （`BuilderException: Index was outside the bounds of the array`），换成 MA 的标准写法后恢复正常。
+- 因此**不再生成 `*_Brightness_Menu.asset`**，输出文件夹里只剩两条动画 + 一个 AnimatorController。
+- 另外这一版把生成内容拆成两个可单独勾选的部分（动画层 / 菜单和参数），方便只想用一半的情况。
+
+## 已经验证过
+
+- 生成后组件为：`MA Merge Animator` + `MA Menu Item`（RadialPuppet / NonToonBrightness）+ `MA Menu Installer` + `MA Parameters`；
+- 完整构建（Build & Test 的导出路径）通过，构建产物里的合并菜单包含
+  `NonToon亮度菜单 / type 203 / NonToonBrightness`；
+- 动画层单独生成时上传也正常（用户实测）。
+
+## 升级后请这样做
+
+1. ALCOM 更新到 1.1.6；
+2. 工具窗口点 **删除已生成**（清掉旧写法留下的菜单资源引用），再点 **生成 / 更新**；
+3. 旧版本生成的 `*_Brightness_Menu.asset` 已经没用了，可以连同 `Assets/NonToonLightLimit` 里那一份一起删掉；
+4. 然后 Build & Test。
 
 ## 安装 / 升级
 

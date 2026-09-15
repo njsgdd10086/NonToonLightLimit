@@ -178,10 +178,12 @@ namespace AtriNaxu.NonToonLightLimit
             EditorGUILayout.Space();
             EditorGUILayout.HelpBox(
                 "生成内容：\n" +
-                "· " + NonToonLightLimitAnimator.ContainerName + " 物体（MA Merge Animator 把动画层合并进 FX；MA Menu Installer 挂菜单；MA Parameters 声明参数）\n" +
+                "· " + NonToonLightLimitAnimator.ContainerName + " 物体（放在 avatar 根目录下）\n" +
+                "· MA Merge Animator：把亮度动画层合并进 FX\n" +
+                "· MA Menu Item（径向滑块）+ MA Menu Installer：菜单由 Modular Avatar 在构建时生成\n" +
+                "· MA Parameters：声明同步的参数\n" +
                 "· 两条动画（最暗 / 最亮）覆盖上面所有渲染器的 material." + NonToonLightLimitAnimator.BrightnessProperty + "\n" +
-                "· 一个单层 AnimatorController（1D 混合树，参数 0 = 最暗，1 = 最亮）\n" +
-                "· 一个表情菜单资源（径向滑块）\n\n" +
+                "· 一个单层 AnimatorController（1D 混合树，参数 0 = 最暗，1 = 最亮）\n\n" +
                 "注意：滑块会统一写出亮度倍数，所以材质的 Brightness 数值在拖动范围内由滑块决定（默认位置 = 1.0，即不改变）；" +
                 "逐材质的亮度上下限、遮罩范围照旧生效。",
                 MessageType.Info);

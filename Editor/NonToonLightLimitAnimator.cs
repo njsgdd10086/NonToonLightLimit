@@ -214,12 +214,10 @@ namespace AtriNaxu.NonToonLightLimit
                 var minClipPath = folder + "/" + avatarName + "_Brightness_Min.anim";
                 var maxClipPath = folder + "/" + avatarName + "_Brightness_Max.anim";
                 var controllerPath = folder + "/" + avatarName + "_Brightness.controller";
-                var menuPath = folder + "/" + avatarName + "_Brightness_Menu.asset";
 
                 AnimationClip minClip = null;
                 AnimationClip maxClip = null;
                 AnimatorController controller = null;
-                ScriptableObject menu = null;
                 var defaultSlider = Mathf.Clamp01(max - min > 1e-6f ? (request.DefaultMultiplier - min) / (max - min) : 0.5f);
 
                 if (request.CreateAnimatorLayer)
@@ -232,13 +230,7 @@ namespace AtriNaxu.NonToonLightLimit
                     if (controller == null) return false;
                 }
 
-                if (request.CreateMenuAndParameters)
-                {
-                    menu = BuildMenu(request.MenuLabel, request.ParameterName, menuPath);
-                    if (menu == null) return false;
-                }
-
-                var container = BuildContainer(request, controller, menu, defaultSlider);
+                var container = BuildContainer(request, controller, defaultSlider);
                 if (container == null) return false;
 
                 AssetDatabase.SaveAssets();
@@ -391,16 +383,15 @@ namespace AtriNaxu.NonToonLightLimit
             return controller;
         }
 
-        private static ScriptableObject BuildMenu(string label, string parameterName, string path)
+        /// <summary>
+        /// 造一个「径向滑块」菜单控件（VRCExpressionsMenu.Control）。
+        /// 注意：不自己生成 VRCExpressionsMenu 资源，而是交给 Modular Avatar 的
+        /// Menu Item + Menu Installer 组件去建菜单 —— 和 MA 自己的「Create Toggle」同一条路。
+        /// </summary>
+        private static object CreateRadialControl(string label, string parameterName)
         {
             var menuType = FindType("VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionsMenu");
-            if (menuType == null) return null;
-
-            var menu = ScriptableObject.CreateInstance(menuType);
-            menu.name = System.IO.Path.GetFileNameWithoutExtension(path);
-            AssetDatabase.CreateAsset(menu, path);
-
-            var controlType = menuType.GetNestedType("Control");
+            var controlType = menuType?.GetNestedType("Control");
             if (controlType == null)
             {
                 Debug.LogError("[NonToon 亮度控制] 找不到 VRCExpressionsMenu.Control，VRChat SDK 版本可能不兼容。");
@@ -419,28 +410,24 @@ namespace AtriNaxu.NonToonLightLimit
                 SetMember(control, "parameter", parameter);
             }
             SetMember(control, "value", 1f);
-
-            var controlsField = menuType.GetField("controls", BindingFlags.Public | BindingFlags.Instance);
-            if (controlsField?.GetValue(menu) is IList controls)
-            {
-                controls.Clear();
-                controls.Add(control);
-            }
-
-            EditorUtility.SetDirty(menu);
-            return menu;
+            return control;
         }
 
         private static GameObject BuildContainer(LightLimitAnimationRequest request, AnimatorController controller,
-                                                 ScriptableObject menu, float defaultSlider)
+                                                 float defaultSlider)
         {
             var mergeType = FindType("nadena.dev.modular_avatar.core.ModularAvatarMergeAnimator");
             var installerType = FindType("nadena.dev.modular_avatar.core.ModularAvatarMenuInstaller");
             var parametersType = FindType("nadena.dev.modular_avatar.core.ModularAvatarParameters");
+            var menuItemType = FindType("nadena.dev.modular_avatar.core.ModularAvatarMenuItem");
             if (mergeType == null || installerType == null || parametersType == null) return null;
 
             if (request.CreateAnimatorLayer && controller == null) return null;
-            if (request.CreateMenuAndParameters && menu == null) return null;
+            if (request.CreateMenuAndParameters && menuItemType == null)
+            {
+                Debug.LogError("[NonToon 亮度控制] 找不到 ModularAvatarMenuItem，Modular Avatar 版本可能不兼容。");
+                return null;
+            }
 
             // 之前生成的全都清掉（可能不止一个：被挪走或复制过），再重建一个干净的
             foreach (var existing in FindContainers(request.AvatarRoot.transform))
@@ -469,11 +456,23 @@ namespace AtriNaxu.NonToonLightLimit
                 SetMember(merge, "matchAvatarWriteDefaults", true);
             }
 
-            // 2) 把菜单挂到表情菜单根上
+            // 2) 菜单项 + 菜单安装器
+            //    用的是 Modular Avatar 自己的做法（和它的「Create Toggle」一样）：
+            //    同一个物体上放 ModularAvatarMenuItem（当 MenuSource） + ModularAvatarMenuInstaller，
+            //    installer 的 menuToAppend 留空，菜单由 MA 在构建时生成，不需要我们自己造菜单资源。
             if (request.CreateMenuAndParameters)
             {
-                var installer = container.AddComponent(installerType);
-                SetMember(installer, "menuToAppend", menu);
+                var item = container.AddComponent(menuItemType);
+                SetMember(item, "label", request.MenuLabel);
+                SetMember(item, "isSynced", true);
+                SetMember(item, "isSaved", true);
+                SetMember(item, "isDefault", true);
+                SetEnumMember(item, "MenuSource", "Children");
+
+                var control = CreateRadialControl(request.MenuLabel, request.ParameterName);
+                if (control != null) SetMember(item, "Control", control);
+
+                container.AddComponent(installerType);
             }
 
             // 3) 声明一个同步的 Float 参数

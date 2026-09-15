@@ -1,5 +1,16 @@
 # 更新日志
 
+## 1.1.6
+
+### 修复
+
+- **菜单改成用 Modular Avatar 自己的组件来挂**（和 MA 的 `GameObject → Modular Avatar → Create Toggle` 完全同一条路）：
+  同一个物体上放 **MA Menu Item**（`RadialPuppet` 控件 + 参数名 + `isSynced/isSaved/isDefault`）+ **MA Menu Installer**，
+  `menuToAppend` 留空 —— 菜单由 Modular Avatar 在构建时生成。
+  之前是插件自己 `CreateInstance` 造一个 `VRCExpressionsMenu` 资源再挂到 `menuToAppend` 上；
+  有用户的工程在这种写法下上传会失败（`Index was outside the bounds of the array`），换掉后恢复正常流程。
+- 因此**不再生成 `*_Brightness_Menu.asset`**，输出文件夹里只剩两条动画和一个 AnimatorController。
+
 ## 1.1.5
 
 ### 变更
