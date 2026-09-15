@@ -29,15 +29,16 @@
 2. 填入总仓库地址（**一个链接就够**，本插件和 [LilToNonToon Switcher](https://github.com/njsgdd10086/LilToNonToonSwitcher) 都在这份索引里）：
 
    ```
-   https://njsgdd10086.github.io/LilToNonToonSwitcher/index.json
+   https://njsgdd10086.github.io/vpm-listing/index.json
    ```
 
 3. 在包列表里找到 **NonToon Light Limit**，点 Install。
 4. 依赖的 `jp.lilxyzw.shadercore` 与 `jp.lilxyzw.nontoon` 会自动装上（如果项目里还没有）。
 
-> 这份索引就是「**ATRI_NAIXU VPM Packages**」总仓库，要装哪些插件自己勾。
-> 本仓库自己的地址 `https://njsgdd10086.github.io/NonToonLightLimit/index.json`
-> 内容是同一份，加过一个就不用再加第二个。
+> 这个索引是「**ATRI_NAIXU VPM Packages**」总仓库（独立的
+> [vpm-listing](https://github.com/njsgdd10086/vpm-listing) 仓库，由 Actions 自动从各插件仓库的
+> Release 生成），包含本插件与 [LilToNonToon Switcher](https://github.com/njsgdd10086/LilToNonToonSwitcher)，
+> 按需勾选安装即可。
 
 ### 方式二：手动放进 Packages
 
