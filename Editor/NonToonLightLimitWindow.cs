@@ -22,6 +22,8 @@ namespace AtriNaxu.NonToonLightLimit
         private float defaultMultiplier;
         private string outputFolder;
         private bool includeLilToon;
+        private bool createAnimatorLayer = true;
+        private bool createMenuAndParameters = true;
         private Vector2 scroll;
 
         private int targetCount;
@@ -44,6 +46,8 @@ namespace AtriNaxu.NonToonLightLimit
             defaultMultiplier = EditorPrefs.GetFloat(Prefix + "Default", 1f);
             outputFolder = EditorPrefs.GetString(Prefix + "OutputFolder", NonToonLightLimitAnimator.DefaultOutputFolder);
             includeLilToon = EditorPrefs.GetBool(Prefix + "IncludeLilToon", false);
+            createAnimatorLayer = EditorPrefs.GetBool(Prefix + "CreateAnimatorLayer", true);
+            createMenuAndParameters = EditorPrefs.GetBool(Prefix + "CreateMenuAndParameters", true);
 
             if (NonToonLightLimitAnimator.CheckDependencies(out var message)) dependencyError = null;
             else dependencyError = message;
@@ -62,6 +66,8 @@ namespace AtriNaxu.NonToonLightLimit
             EditorPrefs.SetFloat(Prefix + "Default", defaultMultiplier);
             EditorPrefs.SetString(Prefix + "OutputFolder", outputFolder);
             EditorPrefs.SetBool(Prefix + "IncludeLilToon", includeLilToon);
+            EditorPrefs.SetBool(Prefix + "CreateAnimatorLayer", createAnimatorLayer);
+            EditorPrefs.SetBool(Prefix + "CreateMenuAndParameters", createMenuAndParameters);
         }
 
         private void RefreshCount()
@@ -113,42 +119,30 @@ namespace AtriNaxu.NonToonLightLimit
             if (EditorGUI.EndChangeCheck()) RefreshCount();
 
             EditorGUILayout.Space();
+            createAnimatorLayer = EditorGUILayout.ToggleLeft("生成动画层（MA Merge Animator + 动画 + 控制器）", createAnimatorLayer);
+            createMenuAndParameters = EditorGUILayout.ToggleLeft("生成菜单和参数（表情菜单滑块 + 同步参数）", createMenuAndParameters);
+
+            EditorGUILayout.Space();
             var hasAvatar = avatar != null;
             var countText = hasAvatar
                 ? "会写动画的渲染器：" + targetCount + " 个"
                 : "会写动画的渲染器：—";
             EditorGUILayout.LabelField(countText, EditorStyles.boldLabel);
 
-            if (hasAvatar && targetCount == 0)
+            if (hasAvatar && targetCount == 0 && createAnimatorLayer)
             {
                 EditorGUILayout.HelpBox("这个 avatar 下没有找到带亮度模块属性的材质。\n" +
                                         "先确认材质是 NonToon，并且模块已经登记（菜单 Tools/NonToon 亮度控制/重新登记到模块列表）。",
                                         MessageType.Warning);
             }
 
-            // 同步参数预算：滑块本身要占一个 8 bit 的同步 Float 参数
-            if (hasAvatar)
+            // 同步参数预算只剩不到 8 bit 时在 Console 里提醒一次（不在窗口里占地方）
+            if (hasAvatar && createMenuAndParameters)
             {
-                var budget = NonToonLightLimitAnimator.DescribeParameterBudget(avatar, out _, out var syncedCount, out var remainingBits);
-                if (budget != null)
-                {
-                    EditorGUILayout.LabelField("参数预算：" + budget, EditorStyles.miniLabel);
-                    if (remainingBits < 8)
-                    {
-                        EditorGUILayout.HelpBox(
-                            "同步参数预算不够了：这个滑块要再加一个 8 bit 的同步 Float 参数。\n" +
-                            "VRChat 上限是 3200 bit / 256 个同步参数，超了上传会失败（有的 SDK 版本会直接报 " +
-                            "Index was outside the bounds of the array）。\n" +
-                            "可以先删掉没用的同步参数（Modular Avatar 的 Show Modular Avatar Information 窗口里有明细），" +
-                            "或者不用滑块，只逐材质调 Brightness。",
-                            MessageType.Warning);
-                    }
-                    else if (syncedCount >= 250)
-                    {
-                        EditorGUILayout.HelpBox("同步参数个数已经 " + syncedCount + " 个（上限 256），再加一个可能会超。",
-                                                MessageType.Warning);
-                    }
-                }
+                var budget = NonToonLightLimitAnimator.DescribeParameterBudget(avatar, out _, out _, out var remainingBits);
+                if (budget != null && remainingBits >= 0 && remainingBits < 8)
+                    EditorGUILayout.HelpBox("同步参数预算只剩 " + remainingBits + " bit，滑块参数（8 bit）可能加不进去。" +
+                                            "可以先关掉「生成菜单和参数」，或者腾一点参数空间。", MessageType.Warning);
             }
 
             EditorGUILayout.Space();
@@ -207,6 +201,8 @@ namespace AtriNaxu.NonToonLightLimit
                 DefaultMultiplier = defaultMultiplier,
                 OutputFolder = outputFolder,
                 IncludeLilToon = includeLilToon,
+                CreateAnimatorLayer = createAnimatorLayer,
+                CreateMenuAndParameters = createMenuAndParameters,
             };
         }
 
@@ -230,6 +226,8 @@ namespace AtriNaxu.NonToonLightLimit
                 DefaultMultiplier = EditorPrefs.GetFloat(Prefix + "Default", 1f),
                 OutputFolder = EditorPrefs.GetString(Prefix + "OutputFolder", NonToonLightLimitAnimator.DefaultOutputFolder),
                 IncludeLilToon = EditorPrefs.GetBool(Prefix + "IncludeLilToon", false),
+                CreateAnimatorLayer = EditorPrefs.GetBool(Prefix + "CreateAnimatorLayer", true),
+                CreateMenuAndParameters = EditorPrefs.GetBool(Prefix + "CreateMenuAndParameters", true),
             });
         }
     }

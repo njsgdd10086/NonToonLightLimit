@@ -48,6 +48,12 @@ namespace AtriNaxu.NonToonLightLimit
         /// 切换后才换成 NonToon，所以要把这些槽也写上动画，切换后才受滑块控制。
         /// </summary>
         public bool IncludeLilToon;
+
+        /// <summary>是否生成动画层（动画 + 控制器 + MA Merge Animator）。</summary>
+        public bool CreateAnimatorLayer = true;
+
+        /// <summary>是否生成菜单和参数（菜单资源 + MA Menu Installer + MA Parameters）。</summary>
+        public bool CreateMenuAndParameters = true;
     }
 
     internal static class NonToonLightLimitAnimator
@@ -191,7 +197,7 @@ namespace AtriNaxu.NonToonLightLimit
                 if (min > max) (min, max) = (max, min);
 
                 var targets = CollectTargets(request.AvatarRoot, request.IncludeLilToon);
-                if (targets.Count == 0)
+                if (targets.Count == 0 && request.CreateAnimatorLayer)
                 {
                     Debug.LogError("[NonToon 亮度控制] 在 " + request.AvatarRoot.name +
                                    " 下没有找到带亮度模块属性的材质。\n" +
@@ -210,16 +216,27 @@ namespace AtriNaxu.NonToonLightLimit
                 var controllerPath = folder + "/" + avatarName + "_Brightness.controller";
                 var menuPath = folder + "/" + avatarName + "_Brightness_Menu.asset";
 
-                var minClip = BuildClip(request.AvatarRoot, targets, min, minClipPath);
-                var maxClip = BuildClip(request.AvatarRoot, targets, max, maxClipPath);
-                if (minClip == null || maxClip == null) return false;
-
+                AnimationClip minClip = null;
+                AnimationClip maxClip = null;
+                AnimatorController controller = null;
+                ScriptableObject menu = null;
                 var defaultSlider = Mathf.Clamp01(max - min > 1e-6f ? (request.DefaultMultiplier - min) / (max - min) : 0.5f);
-                var controller = BuildController(request.ParameterName, minClip, maxClip, defaultSlider, controllerPath);
-                if (controller == null) return false;
 
-                var menu = BuildMenu(request.MenuLabel, request.ParameterName, menuPath);
-                if (menu == null) return false;
+                if (request.CreateAnimatorLayer)
+                {
+                    minClip = BuildClip(request.AvatarRoot, targets, min, minClipPath);
+                    maxClip = BuildClip(request.AvatarRoot, targets, max, maxClipPath);
+                    if (minClip == null || maxClip == null) return false;
+
+                    controller = BuildController(request.ParameterName, minClip, maxClip, defaultSlider, controllerPath);
+                    if (controller == null) return false;
+                }
+
+                if (request.CreateMenuAndParameters)
+                {
+                    menu = BuildMenu(request.MenuLabel, request.ParameterName, menuPath);
+                    if (menu == null) return false;
+                }
 
                 var container = BuildContainer(request, controller, menu, defaultSlider);
                 if (container == null) return false;
@@ -227,25 +244,21 @@ namespace AtriNaxu.NonToonLightLimit
                 AssetDatabase.SaveAssets();
                 if (!Application.isBatchMode) SceneView.RepaintAll();
 
-                var budget = DescribeParameterBudget(request.AvatarRoot, out var usedBits, out var syncedCount, out var remainingBits);
-                if (remainingBits >= 0 && remainingBits < 8)
-                {
-                    Debug.LogWarning("[NonToon 亮度控制] 同步参数预算已经很紧（" + budget + "）：" +
-                                     "这个滑块要占 8 bit，如果上传时报 `Index was outside the bounds of the array`，" +
-                                     "先把没用的同步参数删掉再传。");
-                }
-
                 log.AppendLine("目标 avatar    : " + request.AvatarRoot.name);
-                log.AppendLine("生效渲染器    : " + targets.Count + " 个（材质属性 " + BrightnessProperty +
-                               (request.IncludeLilToon ? "，含仍是 lilToon 的材质槽" : "") + "）");
-                log.AppendLine("滑块范围      : 参数 " + request.ParameterName + "  0 → 亮度 ×" + min.ToString("0.##") +
-                               "，1 → 亮度 ×" + max.ToString("0.##") + "，默认值 " + defaultSlider.ToString("0.###"));
+                log.AppendLine("生成内容      : " + (request.CreateAnimatorLayer ? "动画层" : "") +
+                               (request.CreateAnimatorLayer && request.CreateMenuAndParameters ? " + " : "") +
+                               (request.CreateMenuAndParameters ? "菜单和参数" : ""));
+                if (request.CreateAnimatorLayer)
+                    log.AppendLine("生效渲染器    : " + targets.Count + " 个（材质属性 " + BrightnessProperty +
+                                   (request.IncludeLilToon ? "，含仍是 lilToon 的材质槽" : "") + "）");
+                if (request.CreateMenuAndParameters)
+                    log.AppendLine("滑块范围      : 参数 " + request.ParameterName + "  0 → 亮度 ×" + min.ToString("0.##") +
+                                   "，1 → 亮度 ×" + max.ToString("0.##") + "，默认值 " + defaultSlider.ToString("0.###"));
                 log.AppendLine("生成资源      : " + folder);
-                log.AppendLine("参数预算      : " + (budget ?? "（读取不到，需要 Modular Avatar）"));
-                log.AppendLine("场景物体      : " + request.AvatarRoot.name + "/" + ContainerName +
-                               "（MA Merge Animator + Menu Installer + Parameters）");
-                log.AppendLine("用法          : 上传后表情菜单里会出现「" + request.MenuLabel + "」滑块，" +
-                               "拖动即可统一调整所有 NonToon 材质的亮度；逐材质的亮度上下限仍然生效。");
+                log.AppendLine("场景物体      : " + request.AvatarRoot.name + "/" + ContainerName);
+                if (request.CreateMenuAndParameters)
+                    log.AppendLine("用法          : 上传后表情菜单里会出现「" + request.MenuLabel + "」滑块，" +
+                                   "拖动即可统一调整所有 NonToon 材质的亮度；逐材质的亮度上下限仍然生效。");
                 Debug.Log("[NonToon 亮度控制] 全局亮度动画已生成。\n" + log);
                 Selection.activeGameObject = container;
                 return true;
@@ -426,6 +439,9 @@ namespace AtriNaxu.NonToonLightLimit
             var parametersType = FindType("nadena.dev.modular_avatar.core.ModularAvatarParameters");
             if (mergeType == null || installerType == null || parametersType == null) return null;
 
+            if (request.CreateAnimatorLayer && controller == null) return null;
+            if (request.CreateMenuAndParameters && menu == null) return null;
+
             // 之前生成的全都清掉（可能不止一个：被挪走或复制过），再重建一个干净的
             foreach (var existing in FindContainers(request.AvatarRoot.transform))
             {
@@ -443,33 +459,42 @@ namespace AtriNaxu.NonToonLightLimit
             container.transform.SetParent(request.AvatarRoot.transform, false);
 
             // 1) 把动画层合并进 FX（路径按 avatar 根目录算）
-            var merge = container.AddComponent(mergeType);
-            SetMember(merge, "animator", controller);
-            SetEnumMember(merge, "layerType", "FX");
-            SetEnumMember(merge, "pathMode", "Absolute");
-            SetMember(merge, "deleteAttachedAnimator", true);
-            SetMember(merge, "matchAvatarWriteDefaults", true);
+            if (request.CreateAnimatorLayer)
+            {
+                var merge = container.AddComponent(mergeType);
+                SetMember(merge, "animator", controller);
+                SetEnumMember(merge, "layerType", "FX");
+                SetEnumMember(merge, "pathMode", "Absolute");
+                SetMember(merge, "deleteAttachedAnimator", true);
+                SetMember(merge, "matchAvatarWriteDefaults", true);
+            }
 
             // 2) 把菜单挂到表情菜单根上
-            var installer = container.AddComponent(installerType);
-            SetMember(installer, "menuToAppend", menu);
+            if (request.CreateMenuAndParameters)
+            {
+                var installer = container.AddComponent(installerType);
+                SetMember(installer, "menuToAppend", menu);
+            }
 
             // 3) 声明一个同步的 Float 参数
-            var parameters = container.AddComponent(parametersType);
-            var listField = parametersType.GetField("parameters", BindingFlags.Public | BindingFlags.Instance);
-            if (listField?.GetValue(parameters) is IList list)
+            if (request.CreateMenuAndParameters)
             {
-                var configType = FindType("nadena.dev.modular_avatar.core.ParameterConfig");
-                if (configType != null)
+                var parameters = container.AddComponent(parametersType);
+                var listField = parametersType.GetField("parameters", BindingFlags.Public | BindingFlags.Instance);
+                if (listField?.GetValue(parameters) is IList list)
                 {
-                    var config = Activator.CreateInstance(configType);
-                    SetMember(config, "nameOrPrefix", request.ParameterName);
-                    SetEnumMember(config, "syncType", "Float");
-                    SetMember(config, "defaultValue", defaultSlider);
-                    SetMember(config, "saved", true);
-                    SetMember(config, "hasExplicitDefaultValue", true);
-                    list.Clear();
-                    list.Add(config);
+                    var configType = FindType("nadena.dev.modular_avatar.core.ParameterConfig");
+                    if (configType != null)
+                    {
+                        var config = Activator.CreateInstance(configType);
+                        SetMember(config, "nameOrPrefix", request.ParameterName);
+                        SetEnumMember(config, "syncType", "Float");
+                        SetMember(config, "defaultValue", defaultSlider);
+                        SetMember(config, "saved", true);
+                        SetMember(config, "hasExplicitDefaultValue", true);
+                        list.Clear();
+                        list.Add(config);
+                    }
                 }
             }
 
