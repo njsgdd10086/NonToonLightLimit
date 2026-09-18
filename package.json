@@ -1,6 +1,6 @@
 {
     "name": "com.atrinaxu.nontoon.lightlimit",
-    "version": "1.1.8",
+    "version": "1.1.9",
     "displayName": "NonToon Light Limit",
     "description": "为 NonToon 增加亮度上下限与亮度倍数（Light Limit Changer 式的效果）。以 Shader Core 模块的形式注入，不改动 NonToon 本体；另附一键生成全局亮度动画 + 表情菜单滑块的小工具。",
     "unity": "2022.3",

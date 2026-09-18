@@ -81,6 +81,15 @@ namespace AtriNaxu.NonToonLightLimit
             scroll = EditorGUILayout.BeginScrollView(scroll);
 
             EditorGUILayout.LabelField("把 avatar 下所有 NonToon 材质的亮度接到一根菜单滑块上。", EditorStyles.boldLabel);
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.LabelField("NonToon 亮度控制  版本 v" + UpdateChecker.InstalledVersion, EditorStyles.miniLabel, GUILayout.Width(220f));
+                GUILayout.FlexibleSpace();
+                if (GUILayout.Button("检查更新", EditorStyles.miniButton, GUILayout.Width(80f)))
+                    UpdateChecker.Check(true);
+                if (GUILayout.Button("发布页", EditorStyles.miniButton, GUILayout.Width(60f)))
+                    Application.OpenURL(UpdateChecker.ReleasesUrl);
+            }
             EditorGUILayout.Space();
 
             if (!string.IsNullOrEmpty(dependencyError))
