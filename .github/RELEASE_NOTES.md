@@ -1,18 +1,22 @@
-**NonToon 亮度控制 1.1.9** —— 加了版本号显示与更新检查。
+**NonToon Light Limit 1.2.0 —— 亮度模块拆分为独立的 NonToon Modules 包**
 
-## 新增
+## [1.2.0] - 2026-09-17
 
-- 菜单 Tools > NonToon 亮度控制 > 关于与更新检查…：显示当前版本、索引里的最新版本，可「检查更新 / 打开发布页」。
-- 菜单 Tools > NonToon 亮度控制 > 检查更新。
-- 窗口顶部显示版本号 + 检查更新 / 发布页按钮。
-- 编辑器启动后每天自动检查一次（失败静默，发现新版只在 Console 提示）。
+这一版做了**架构调整**：亮度模块从插件里拆出去，做成独立的模块包。功能不变，但模块可以单独安装使用了。
 
-检查读的是总 VPM 索引：https://njsgdd10086.github.io/vpm-listing/index.json（不用额外设置）。
+### 变更
 
-## 安装 / 升级
+- **亮度上下限（LightLimit）模块搬到新包 `com.nontoon.modules`**（仓库 NonToon Modules）✓ ——
+  本插件现在通过 VPM 依赖**订阅**它（`vpmDependencies`）✓，插件里不再包含任何 Shader Core 模块文件 ✓；
+- 登记模块的逻辑改为**调用模块包的 API** ✓（通过反射 ✓ —— 模块包没装时仍能编译 ✓，并回退到本插件自带的老实现 ✓，功能不中断 ✓）；
+- 用本插件时会**自动勾选**亮度模块 ✓（保持原来的行为 ✓：编辑器就绪后自动登记 ✓，也可以在 `Tools/NonToon 模块` 里手动开关 ✓）。
 
-VCC / ALCOM 仓库地址（总仓库）：
+### 说明
 
-`
-https://njsgdd10086.github.io/vpm-listing/index.json
-`
+- 升级后请让 VCC/ALCOM 一并安装 `com.nontoon.modules`（依赖会自动带上 ✓）；
+- **如果之前手动把本插件的 `Shaders` 目录拷进过工程**，请删掉那份旧副本 ✗ ——
+  同一个模块 id 出现两次会被 Shader Core 重复编入 shader 导致编译错误。
+
+### 模块本身没变
+
+亮度模块的算法与参数同 1.1.9，只是换了家。
