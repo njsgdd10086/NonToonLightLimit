@@ -90,7 +90,16 @@ namespace AtriNaxu.NonToonLightLimit
         // ------------------------------------------------------------------ 登记 / 移除
 
         /// <summary>把本模块补进 NonToon 的模块列表。返回是否真的有改动（幂等：已登记时返回 false）。</summary>
-        internal static bool Register() => SetRegistered(true);
+        /// <summary>
+        /// 登记到 NonToon 的模块列表。
+        /// 优先交给模块包 com.nontoon.modules（模块本体已经搬到那里了，本插件通过 VPM 依赖订阅它）；
+        /// 模块包没装时回退到本插件自带的老实现，保证功能不中断。
+        /// </summary>
+        internal static bool Register()
+        {
+            if (NonToonModulesBridge.TryEnsureEnabled(out var ok)) return ok;
+            return SetRegistered(true);
+        }
 
         /// <summary>哪些目标 shader 还没有登记本模块。</summary>
         internal static List<string> FindUnregisteredShaders()
