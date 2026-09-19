@@ -42,7 +42,8 @@ jobs:
           unzip -l "$ZIP" | grep -q 'package.json' || { echo "压缩包里没有 package.json"; exit 1; }
           unzip -l "$ZIP" | grep -q 'Editor/LightLimitModuleInstaller.cs' || { echo "压缩包里缺少源码"; exit 1; }
           unzip -l "$ZIP" | grep -q 'Editor/LightLimitModuleInstaller.cs.meta' || { echo "压缩包里缺少 meta"; exit 1; }
-          unzip -l "$ZIP" | grep -q 'Shaders/Modules/LightLimit/com.atrinaxu.nontoon.lightlimit.scmodule' || { echo "压缩包里缺少模块定义"; exit 1; }
+          unzip -l "$ZIP" | grep -q 'Editor/NonToonModulesBridge.cs' || { echo "压缩包里缺少模块桥接层"; exit 1; }
+          unzip -l "$ZIP" | grep -q 'Editor/NonToonModulesBridge.cs.meta' || { echo "压缩包里缺少桥接层 meta"; exit 1; }
 
       - name: 创建 Release 并上传
         shell: bash
